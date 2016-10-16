@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HeadHunter.TropicalIsland
 {
@@ -34,9 +35,18 @@ namespace HeadHunter.TropicalIsland
             neighbor._inlandNeighbors.Add(this);
         }
 
+        /// <summary>
+        /// Remove two-way neighbor relations between this object and param object.
+        /// </summary>
+        public void RemoveInlandNeighbor(IslandPart neighbor)
+        {
+            _inlandNeighbors.Remove(neighbor);
+            neighbor._inlandNeighbors.Remove(this);
+        }
+
         public void AddOutermostNeighbor(int outermostNeighborHeight)
         {
-            if(outermostNeighborHeight < 0)
+            if (outermostNeighborHeight < 0)
             {
                 throw new ArgumentOutOfRangeException("outermostNeighborHeight", outermostNeighborHeight, "Must be non-negative.");
             }
@@ -46,6 +56,9 @@ namespace HeadHunter.TropicalIsland
                 : outermostNeighborHeight;
         }
 
+        /// <summary>
+        /// Сombine this object with its neighbor. All inland relations from neighbor will be removed.
+        /// </summary>
         public void MergeFromInlandNeighbor(IslandPart neighbor)
         {
             // raise height of result island to max from height of two island
@@ -55,7 +68,7 @@ namespace HeadHunter.TropicalIsland
                 VolumeStoreWater += (neighbor.Height - Height) * Square;
                 Height = neighbor.Height;
             }
-            else if(neighbor.Height < Height)
+            else if (neighbor.Height < Height)
             {
                 VolumeStoreWater += (Height - neighbor.Height) * neighbor.Square;
             }
@@ -69,30 +82,48 @@ namespace HeadHunter.TropicalIsland
                 AddOutermostNeighbor(neighbor.OutermostNeighborMinHeight);
             }
 
-            // remove merged inland part from inland neighbors
-            _inlandNeighbors.Remove(neighbor);
-
             // merge inland neighbors
             foreach (var newInlandNeighbor in neighbor.InlandNeighbors)
             {
-                if(newInlandNeighbor == this)
+                if (newInlandNeighbor == this)
                 {
                     continue;
                 }
 
                 AddInlandNeighbor(newInlandNeighbor);
-                newInlandNeighbor._inlandNeighbors.Remove(neighbor);
+            }
+
+
+            while (true)
+            {
+                var newInlandNeighbor = neighbor.InlandNeighbors.FirstOrDefault();
+                if (newInlandNeighbor == null)
+                {
+                    break;
+                }
+
+                // we remove all inland relations from neighbor that we merge from
+                // we are tranfer its relations to new merged (combined) object
+                // so objects that we merged from will have no inland relations (and other inland parts will not link to it)
+                neighbor.RemoveInlandNeighbor(newInlandNeighbor);
+
+                if (newInlandNeighbor == this)
+                {
+                    continue;
+                }
+
+                AddInlandNeighbor(newInlandNeighbor);
             }
         }
 
         public void AddHeight(int value)
         {
-            if(value < 0)
+            if (value < 0)
             {
                 throw new ArgumentOutOfRangeException("value", value, "Must be non-negative.");
             }
 
-            if(value == 0)
+            if (value == 0)
             {
                 return;
             }
